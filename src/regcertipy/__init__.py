@@ -20,7 +20,7 @@ class MockLDAPConnection:
         if sid_file:
             with open(sid_file) as f:
                 for line in f:
-                    self.user_sids.append(line[:-1])
+                    self.user_sids.append(line.strip())
         if use_owned_sids and self.neo4j_driver:
             self.get_owned_sids()
 
@@ -134,9 +134,9 @@ def main():
     templates = []
 
     for key, dct in parser.to_dict().items():
-        if not key.startswith(
+        if not key.casefold().startswith((
             "HKEY_USERS\\.DEFAULT\\Software\\Microsoft"
-            "\\Cryptography\\CertificateTemplateCache\\"
+            "\\Cryptography\\CertificateTemplateCache\\").casefold()
         ):
             continue
 
