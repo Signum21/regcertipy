@@ -13,14 +13,14 @@ class MockTarget:
 
 
 class MockLDAPConnection:
-    user_sids = []
+    user_sids = set()
 
     def __init__(self, sid_file, neo4j_driver=None, use_owned_sids=False):
         self.neo4j_driver = neo4j_driver
         if sid_file:
             with open(sid_file) as f:
                 for line in f:
-                    self.user_sids.append(line.strip())
+                    self.user_sids.add(line.strip())
         if use_owned_sids and self.neo4j_driver:
             self.get_owned_sids()
 
@@ -28,11 +28,17 @@ class MockLDAPConnection:
         return self.user_sids
 
     def get_owned_sids(self):
-        records, _, _ = self.neo4j_driver.execute_query(
-            "MATCH (u:User)-[:MemberOf*1..]->(g:Group) WHERE COALESCE(u.system_tags, '') CONTAINS 'owned' return g.objectid"
+        records_agi, _, _ = self.neo4j_driver.execute_query(
+            "MATCH (u)-[:MemberOf*1..]->(g:Group) WHERE COALESCE(u.system_tags, '') CONTAINS 'owned' return u.objectid,g.objectid"
         )
+        records_agt, _, _ = self.neo4j_driver.execute_query(
+            "MATCH (u)-[:MemberOf*1..]->(g:Group) WHERE (u:Tag_Owned) return u.objectid,g.objectid"
+        )
+        records = [*records_agi, *records_agt]
+
         for record in records:
-            self.user_sids.append(record["g.objectid"])
+            self.user_sids.add(record["u.objectid"])
+            self.user_sids.add(record["g.objectid"])
 
     @functools.cache
     def lookup_sid(self, sid, **kwargs):
